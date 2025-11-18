@@ -1,48 +1,81 @@
 """
-Database Schemas
+Database Schemas for Anime Website (MongoDB)
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
+Each Pydantic model corresponds to a collection. The collection name is the
+lowercased class name (e.g., User -> "user").
 
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+We store references via ObjectId strings.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional, Literal
+from pydantic import BaseModel, Field, EmailStr
 
-# Example schemas (replace with your own):
-
+# Core user schema
 class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    email: EmailStr
+    username: str = Field(..., min_length=3, max_length=30)
+    password_hash: str = Field(..., description="BCrypt hash")
+    role: Literal["user", "admin"] = "user"
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+# Taxonomy
+class Genre(BaseModel):
+    name: str
+    slug: str
 
-# Add your own schemas here:
-# --------------------------------------------------
+class Tag(BaseModel):
+    name: str
+    slug: str
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Studio(BaseModel):
+    name: str
+    website: Optional[str] = None
+    country: Optional[str] = None
+
+# Anime and related
+class Anime(BaseModel):
+    title: str
+    alt_titles: Optional[List[str]] = None
+    synopsis: Optional[str] = None
+    year: Optional[int] = None
+    type: Optional[Literal["TV", "Movie", "OVA", "ONA"]] = None
+    status: Optional[Literal["ongoing", "completed", "hiatus"]] = None
+    popularity: int = 0
+    average_rating: float = 0
+    poster_url: Optional[str] = None
+    banner_url: Optional[str] = None
+    studio_id: Optional[str] = None
+    source: Optional[Literal["original", "manga", "light_novel", "game"]] = None
+    genre_ids: Optional[List[str]] = None
+    tag_ids: Optional[List[str]] = None
+    metadata: Optional[dict] = None  # External IDs
+
+class Episode(BaseModel):
+    anime_id: str
+    number: int
+    title: Optional[str] = None
+    synopsis: Optional[str] = None
+    air_date: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    thumbnail_url: Optional[str] = None
+    video_manifest_url: Optional[str] = None
+
+class Review(BaseModel):
+    anime_id: str
+    user_id: str
+    rating: int = Field(..., ge=1, le=10)
+    title: Optional[str] = None
+    body: Optional[str] = None
+
+class Comment(BaseModel):
+    anime_id: Optional[str] = None
+    episode_id: Optional[str] = None
+    user_id: str
+    body: str
+    parent_id: Optional[str] = None
+
+class Watchlist(BaseModel):
+    user_id: str
+    anime_id: str
+    status: Literal["planned", "watching", "completed", "dropped"] = "planned"
